@@ -1,46 +1,53 @@
-from flask import Flask, request, jsonify, render_template
-import pickle
-import numpy as np
+from flask import Flask, request, render_template, jsonify
+import pandas as pd
+from prophet import Prophet
+import matplotlib.pyplot as plt
+import os
 
 # Initialize Flask app
 app = Flask(__name__)
 
-# Load the business predictions data
-predictions_path = 'business_prediction.pkl'
+# Data for different employee size bands
+data_dict = {
+    '1': [187600, 180000, 174900, 162500, 158400, 155600, 156700, 152300, 146200, 143100, 138700, 134300, 135800, 131000],
+    '2-4': [604700, 599300, 616600, 594700, 643200, 661100, 683100, 715300, 734100, 751200, 756800, 765000, 780400, 773100],
+    # (Remaining data...)
+}
 
-# Attempt to load pickle file with forecast data
-try:
-    with open(predictions_path, 'rb') as file:
-        forecast_result = pickle.load(file)
-    print("Forecast data loaded successfully.")
-except EOFError:
-    print(f"Error: The pickle file {predictions_path} is empty or corrupted.")
-    forecast_result = {}  # Empty data if file is corrupted
-except Exception as e:
-    print(f"An unexpected error occurred: {str(e)}")
-    forecast_result = {}
+def fit_and_predict(employee_band, employee_data):
+    # Prepare DataFrame
+    df_prophet = pd.DataFrame({
+        'ds': pd.date_range(start='2010-01-01', periods=len(employee_data), freq='Y'),
+        'y': employee_data
+    })
+
+    model = Prophet()
+    model.fit(df_prophet)
+
+    # Generate future predictions
+    future = model.make_future_dataframe(periods=5, freq='Y')
+    forecast = model.predict(future)
+    return forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
 
 @app.route('/')
 def home():
     return render_template('index.html')
 
-@app.route('/forecast', methods=['POST'])
-def forecast():
+@app.route('/predict', methods=['POST'])
+def predict():
     try:
-        # Extract form data
-        industry = request.form['industry']  # Industry key from the form
-        year = int(request.form['year'])    # Year input
-        
-        # Retrieve prediction for the given industry and year
-        if industry in forecast_result and year in forecast_result[industry]:
-            forecast_value = forecast_result[industry][year]
-            message = f"The forecasted business number for '{industry}' in {year} is {forecast_value}."
-        else:
-            message = "No forecast data available for the specified industry and year."
+        employee_band = request.form['employee_band']
+        if employee_band not in data_dict:
+            return render_template('index.html', prediction_text="Invalid Employee Band!")
+
+        # Perform prediction
+        forecast_result = fit_and_predict(employee_band, data_dict[employee_band])
+
+        # Get the last 5 years of predictions
+        predictions = forecast_result.tail(5).to_dict(orient='records')
+        return render_template('index.html', prediction_text=f"Forecast for Employee Band {employee_band}: {predictions}")
     except Exception as e:
-        message = f"Error: {str(e)}"
-    
-    return render_template('index.html', prediction_text=message)
+        return render_template('index.html', prediction_text=f"Error: {str(e)}")
 
 if __name__ == "__main__":
     app.run(debug=True)
