@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Forecast</title>
+</head>
+<body>
+    <h1>Business Forecast Application</h1>
+    <form action="/predict" method="post">
+        <label for="employee_band">Select Employee Band:</label>
+        <input type="text" id="employee_band" name="employee_band" placeholder="e.g., 1 or 10-19" required>
+        
+        <label for="year">Enter Year:</label>
+        <input type="number" id="year" name="year" placeholder="e.g., 2023" required>
+        
+        <button type="submit">Predict</button>
+    </form>
+    <h2>{{ prediction_text }}</h2>
+</body>
+</html>
