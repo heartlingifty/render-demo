@@ -1,22 +1,92 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Business Prediction</title>
+    <title>Industry Predictions</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body>
-    <h1>Business Prediction in the UK</h1>
-    <form action="/predict" method="POST">
-        <label for="employee_band">Select Employee Band:</label>
-        <select name="employee_band" id="employee_band">
-            <option value="1">1</option>
-            <option value="2-4">2-4</option>
-            <option value="5-9">5-9</option>
-            <!-- Add other bands -->
-        </select>
-        <button type="submit">Predict</button>
-    </form>
-    <p>{{ prediction_text }}</p>
+    <h1>Industry Predictions for the Next 10 Years</h1>
+
+    <label for="industry">Select Industry:</label>
+    <select id="industry">
+        <!-- Options will be dynamically loaded -->
+    </select>
+    <button onclick="getPredictions()">Predict</button>
+
+    <div id="charts"></div>
+
+    <script>
+        // Fetch available industries
+        fetch('/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ industry: "GetIndustries" })  // Placeholder request
+        })
+        .then(response => response.json())
+        .then(data => {
+            const industryDropdown = document.getElementById("industry");
+            data.forEach(industry => {
+                const option = document.createElement("option");
+                option.value = industry;
+                option.textContent = industry;
+                industryDropdown.appendChild(option);
+            });
+        });
+
+        // Fetch predictions for the selected industry
+        function getPredictions() {
+            const industry = document.getElementById("industry").value;
+
+            fetch('/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ industry })
+            })
+            .then(response => response.json())
+            .then(predictions => {
+                const years = predictions.map(item => item.Year);
+                const businessNumbers = predictions.map(item => item["Business Number"]);
+                const employmentNumbers = predictions.map(item => item.Employment);
+                const turnovers = predictions.map(item => item.Turnover);
+
+                // Clear previous charts
+                document.getElementById("charts").innerHTML = "";
+
+                // Create Plotly chart
+                const data = [
+                    {
+                        x: years,
+                        y: businessNumbers,
+                        type: 'bar',
+                        name: 'Business Numbers'
+                    },
+                    {
+                        x: years,
+                        y: employmentNumbers,
+                        type: 'bar',
+                        name: 'Employment Numbers'
+                    },
+                    {
+                        x: years,
+                        y: turnovers,
+                        type: 'bar',
+                        name: 'Turnovers'
+                    }
+                ];
+
+                const layout = {
+                    title: `Predictions for ${industry}`,
+                    xaxis: { title: 'Year' },
+                    yaxis: { title: 'Values' },
+                    barmode: 'group'
+                };
+
+                Plotly.newPlot('charts', data, layout);
+            });
+        }
+    </script>
 </body>
 </html>
